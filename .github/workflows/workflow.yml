@@ -11,16 +11,23 @@ jobs:
     outputs:
       env_name: ${{ steps.parse.outputs.result }}
     steps:
-      - name: Parse PR title → env_name (dev|prod)
-        id: parse
-        uses: actions/github-script@v7
-        with:
-          result-encoding: string
-          script: |
-            const t = (context.payload.pull_request?.title || '').toLowerCase();
-            // matches: [FEATURE DEV - ...] or [feature prod - ...]
-            const m = t.match(/\[(?:[^\]]*?\s)?(dev|prod)\b/);
-            return m ? m[1] : 'dev'; // fallback
+      - name: Decide env from base branch (develop → parse title, else → prod)
+        id: setenv
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$BASE_REF" == "develop" ]]; then
+            t="${PR_TITLE,,}"
+            if [[ "$t" =~ \[(.*[[:space:]])?(dev|zem)\b ]]; then
+              echo "env_name=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+            else
+              echo "env_name=undefined" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "env_name=prod" >> "$GITHUB_OUTPUT"
+          fi
 
   use-env:
     needs: [detect-env]
