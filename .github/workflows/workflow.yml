@@ -1,0 +1,71 @@
+name: Run on merged & approved PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  run-if-approved-and-merged:
+    # Only continue if the PR was merged (not just closed)
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    outputs:
+      close-pr-check: ${{ steps.approval.outputs.approved }}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Verify PR has an APPROVED review
+        id: approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            // Get all reviews
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              { owner, repo, pull_number, per_page: 100 }
+            );
+
+            // Use each reviewer's latest state (GitHub counts the latest per user)
+            const latestByUser = new Map();
+            for (const r of reviews) {
+              // later entries overwrite earlier ones, so end state per user remains
+              latestByUser.set(r.user.login, String(r.state).toUpperCase());
+            }
+
+            const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
+            core.info(`Found ${approvals} approval(s).`);
+            core.setOutput('approved', approvals > 0 ? 'true' : 'false');
+
+      - name: Stop if not approved
+        if: steps.approval.outputs.approved != 'true'
+        run: |
+          echo "PR was merged but no APPROVED review found. Exiting."
+          exit 1
+
+  detect-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.parse.outputs.result }}
+    steps:
+      - name: Parse PR title → env_name (dev|prod)
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const t = (context.payload.pull_request?.title || '').toLowerCase();
+            // matches: [FEATURE DEV - ...] or [feature prod - ...]
+            const m = t.match(/\[(?:[^\]]*?\s)?(dev|prod)\b/);
+            return m ? m[1] : 'dev'; // fallback
+
+  use-env:
+    needs: [detect-env, run-if-approved-and-merged]
+    if: ${{ needs.run-if-approved-and-merged.close-pr-check == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Env is ${{ needs.detect-env.outputs.env_name }}"
