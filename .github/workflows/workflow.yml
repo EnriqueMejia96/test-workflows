@@ -2,7 +2,7 @@ name: Run on merged & approved PR
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize]
 
 jobs:
   detect-env:
