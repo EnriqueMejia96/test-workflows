@@ -1,0 +1,38 @@
+name: Run on merged & approved PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  detect-env:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == true }}
+    outputs:
+      env_name: ${{ steps.setenv.outputs.env_name }}
+    steps:
+      - name: Decide env from base branch (develop → parse title, else → prod)
+        id: setenv
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$BASE_REF" == "develop" ]]; then
+            t="${PR_TITLE,,}"
+            if [[ "$t" =~ \[[^]]*(dev|zem)[^]]*\] ]]; then
+              echo "env_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            else
+              echo "env_name=dev" >> "$GITHUB_OUTPUT"   # fallback on develop
+            fi
+          else
+            echo "env_name=prod" >> "$GITHUB_OUTPUT"
+          fi
+
+  use-env:
+    needs: [detect-env]
+    runs-on: ubuntu-latest
+    env:
+      env-name: ${{ needs.detect-env.outputs.env_name }}
+    steps:
+      - run: echo "Env is ${{ env.env-name}}"
