@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.pull_request.merged == true }}
     outputs:
-      env_name: ${{ steps.parse.outputs.result }}
+      env_name: ${{ steps.setenv.outputs.env_name }}
     steps:
       - name: Decide env from base branch (develop → parse title, else → prod)
         id: setenv
@@ -23,7 +23,7 @@ jobs:
             if [[ "$t" =~ \[(.*[[:space:]])?(dev|zem)\b ]]; then
               echo "env_name=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
             else
-              echo "env_name=undefined" >> "$GITHUB_OUTPUT"
+              echo "env_name=dev" >> "$GITHUB_OUTPUT"   # fallback on develop
             fi
           else
             echo "env_name=prod" >> "$GITHUB_OUTPUT"
@@ -32,5 +32,7 @@ jobs:
   use-env:
     needs: [detect-env]
     runs-on: ubuntu-latest
+    env:
+      env-name: ${{ needs.detect-env.outputs.env_name }}
     steps:
-      - run: echo "Env is ${{ needs.detect-env.outputs.env_name }}"
+      - run: echo "Env is ${{ env.env-name}}"
