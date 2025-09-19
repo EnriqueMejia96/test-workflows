@@ -36,3 +36,6 @@ jobs:
       env-name: ${{ needs.detect-env.outputs.env_name }}
     steps:
       - run: echo "Env is ${{ env.env-name}}"
+
+
+      
