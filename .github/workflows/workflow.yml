@@ -20,8 +20,8 @@ jobs:
         run: |
           if [[ "$BASE_REF" == "develop" ]]; then
             t="${PR_TITLE,,}"
-            if [[ "$t" =~ \[(.*[[:space:]])?(dev|zem)\b ]]; then
-              echo "env_name=${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+            if [[ "$t" =~ \[[^]]*(dev|zem)[^]]*\] ]]; then
+              echo "env_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
             else
               echo "env_name=dev" >> "$GITHUB_OUTPUT"   # fallback on develop
             fi
