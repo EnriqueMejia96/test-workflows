@@ -2,12 +2,11 @@ name: Run on merged & approved PR
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize]
 
 jobs:
   detect-env:
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.merged == true }}
     outputs:
       env_name: ${{ steps.setenv.outputs.env_name }}
     steps:
@@ -36,3 +35,5 @@ jobs:
       env-name: ${{ needs.detect-env.outputs.env_name }}
     steps:
       - run: echo "Env is ${{ env.env-name}}"
+
+
