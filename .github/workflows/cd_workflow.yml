@@ -6,11 +6,9 @@ on:
 
 jobs:
   detect:
-    # run this job only when the PR was merged (not just closed)
     if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
 
-    # 👇 expose step outputs as JOB outputs
     outputs:
       deploy:     ${{ steps.detect.outputs.deploy }}
       has_errors: ${{ steps.detect.outputs.has_errors }}
