@@ -1,0 +1,81 @@
+name: Run on merged & approved PR
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy:     ${{ steps.detect.outputs.deploy }}
+      has_errors: ${{ steps.detect.outputs.has_errors }}
+      matrix:     ${{ steps.detect.outputs.matrix }}
+      all_changed: ${{ steps.detect.outputs.all_changed }}
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+          
+      - name: Get matrix and deploy flag
+        id: detect
+        uses: ./.github/actions/get-matrix-and-deploy-flag
+        with:
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          head_sha: ${{ github.event.pull_request.head.sha }}
+          validate: "true"   
+
+      - name: Show outputs
+        run: |
+          echo "deploy=${{ steps.detect.outputs.deploy }}"
+          echo "has_errors=${{ steps.detect.outputs.has_errors }}"
+          echo "matrix=${{ steps.detect.outputs.matrix }}"
+          echo -e "all_changed:\n${{ steps.detect.outputs.all_changed }}"
+
+  build:
+    needs: detect
+    if: ${{ needs.detect.outputs.deploy == 'true' && needs.detect.outputs.has_errors == 'false' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        usecase: ${{ fromJson(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Building for ${{ matrix.usecase }}"
+
+
+
+  detect-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.setenv.outputs.env_name }}
+    steps:
+      - name: Decide env from base branch (develop → parse title, else → prod)
+        id: setenv
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$BASE_REF" == "develop" ]]; then
+            t="${PR_TITLE,,}"
+            if [[ "$t" =~ \[[^]]*(dev|zem)[^]]*\] ]]; then
+              echo "env_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            else
+              echo "env_name=dev" >> "$GITHUB_OUTPUT"   # fallback on develop
+            fi
+          else
+            echo "env_name=prod" >> "$GITHUB_OUTPUT"
+          fi
+
+  use-env:
+    needs: [detect-env]
+    runs-on: ubuntu-latest
+    env:
+      env-name: ${{ needs.detect-env.outputs.env_name }}
+    steps:
+      - run: echo "Env is ${{ env.env-name}}"
+
+

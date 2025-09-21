@@ -1,0 +1,37 @@
+name: Generate Matrix for Use Cases and deploy flag
+description: "Generate a matrix for use cases based on the changed files in the pull request"
+
+inputs:
+  base_sha:
+    description: "Base SHA for the pull request"
+    required: true
+  head_sha:
+    description: "Head SHA for the pull request"
+    required: true
+  validate:
+    description: "Enables validation process"
+    required: false
+    default: "false"
+
+outputs:
+  all_changed:
+    description: "List of all changed files"
+    value: ${{ steps.set-matrix.outputs.all_changed }}
+  matrix:
+    description: "Matrix of use cases"
+    value: ${{ steps.set-matrix.outputs.matrix }}
+  deploy:
+    description: "Launch deployment"
+    value: ${{ steps.set-matrix.outputs.deploy }}
+  has_errors:
+    description: "Flag indicating if there are errors"
+    value: ${{ steps.set-matrix.outputs.has_errors }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: generate-matrix
+      id: set-matrix
+      shell: bash
+      run: |
+        python3 "$GITHUB_ACTION_PATH/get_matrix_and_deploy_flag.py" ${{ inputs.base_sha }} ${{ inputs.head_sha }} ${{ inputs.validate }}
