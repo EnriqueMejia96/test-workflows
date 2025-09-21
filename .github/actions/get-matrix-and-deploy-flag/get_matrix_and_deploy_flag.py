@@ -21,7 +21,7 @@ def run(base_sha: str, head_sha: str, validate: bool):
     all_changed = "\n".join(all_changed_list)
     print(f"=> all_changed: {all_changed}")
 
-    pattern_relevant = re.compile(r"^(config|dataset|pipeline|linkedService|trigger|src)/")
+    pattern_relevant = re.compile(r'^(config/|dataset/|pipeline/|linkedService/|trigger/|src/)')
     relevant_list = [f for f in all_changed_list if pattern_relevant.match(f)]
     relevant = "\n".join(relevant_list)
     print(f"=> relevant: {relevant}")
@@ -29,7 +29,7 @@ def run(base_sha: str, head_sha: str, validate: bool):
     config_subfolders = sorted({
         f.split("/", 2)[1]
         for f in relevant_list
-        if f.startswith("config") and len(f.split("/", 2)) > 1
+        if f.startswith("config/") and len(f.split("/", 2)) > 1
     })
     config_subfolders_str = "\n".join(config_subfolders)
     print(f"=> config_subfolders: {config_subfolders_str}")
@@ -82,10 +82,13 @@ def run(base_sha: str, head_sha: str, validate: bool):
     print(f"use case is {use_cases_json}")
 
     with open(os.getenv("GITHUB_OUTPUT"), "a") as f:
-        f.write(f"deploy={str(deploy).lower()}\n")
-        f.write(f"matrix={use_cases_json}\n")
-        f.write(f"all_changed={all_changed}\n")
-        f.write(f"has_errors={str(has_errors).lower()}\n")
+        print(f"deploy={str(deploy).lower()}", file=f)
+        print(f"matrix={use_cases_json}", file=f)
+        print("all_changed<<__GH_DELIM__", file=f)
+        print(all_changed, file=f)            # safe multi-line write
+        print("__GH_DELIM__", file=f)
+        print(f"has_errors={str(has_errors).lower()}", file=f)
+
 
     # Validate changes
     if validate:
@@ -93,11 +96,11 @@ def run(base_sha: str, head_sha: str, validate: bool):
         print(f"Has errors: {str(has_errors).lower()}")
         print(f"All changed: {all_changed}")
         if has_errors:
-            print(f"::error:: Deployment is not valid.")
-            print(f"Please check the changes in the PR.")
-            print(f"If you want to deploy, make sure to:")
-            print(f"1. Update the config files (just one subfolder per deploy) or the assets files, but not both scenarios at the same PR.")
-            print(f"2. Remove the temp files.")
+            print("::error:: Deployment is not valid.")
+            print("Please check the changes in the PR.")
+            print("If you want to deploy, make sure to:")
+            print("1. Update the config files (just one subfolder per deploy) or the assets files, but not both scenarios at the same PR.")
+            print("2. Remove the temp files.")
             sys.exit(1)
         else:
             print("Deployment is valid.")
