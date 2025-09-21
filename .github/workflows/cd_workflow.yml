@@ -15,7 +15,7 @@ jobs:
       deploy:     ${{ steps.detect.outputs.deploy }}
       has_errors: ${{ steps.detect.outputs.has_errors }}
       matrix:     ${{ steps.detect.outputs.matrix }}
-      all_changed:${{ steps.detect.outputs.all_changed }}
+      all_changed: ${{ steps.detect.outputs.all_changed }}
 
     steps:
       - uses: actions/checkout@v4
